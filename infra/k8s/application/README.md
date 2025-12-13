@@ -10,7 +10,12 @@ kubectl apply -f .
 # 상태 확인
 kubectl get all -n gangwon
 ```
-
+## secret 으로 api key 등록
+```bash
+  kubectl create secret generic app-secret \
+  --from-literal=UPSTAGE_API_KEY={UPSTAGE_API_KEY} \
+  -n gangwon
+```
 ## 로그 확인
    ```bash
    # Check all resources

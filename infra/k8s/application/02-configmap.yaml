@@ -6,4 +6,4 @@ metadata:
 data:
   CHROMA_HOST: "chromadb"
   CHROMA_PORT: "8000"
-  UPSTAGE_API_KEY: ""
+  UPSTAGE_API_KEY: "${UPSTAGE_API_KEY}"
