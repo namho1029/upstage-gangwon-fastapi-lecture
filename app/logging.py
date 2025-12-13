@@ -15,6 +15,7 @@ def init_logging() -> None:
 
     os.makedirs("logs", exist_ok=True)
     # 1) 로깅 기본 설정
+
     # logging.basicConfig(
     #     format="%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s",
     #     # format="%(asctime)s [%(levelname)s] %(message)s",
