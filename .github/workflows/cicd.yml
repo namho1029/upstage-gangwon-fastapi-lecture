@@ -2,7 +2,7 @@ name: CI/CD
 
 on:
   push:
-    branches: [ main, develop, deploy/cicd, deploy/container ]
+    branches: [ main, develop, deploy/cicd ]
   pull_request:
     branches: [ main, develop ]
 
