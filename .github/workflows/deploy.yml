@@ -46,7 +46,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          IMAGE_NAME="ghcr.io/inspire12/upstage-gangwon-fastapi-lecture"
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/gangwon-namho"
           VERSION_TAG="${{ steps.version.outputs.version_tag }}"
 
           docker buildx build \
