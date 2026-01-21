@@ -1,11 +1,11 @@
-name: Build & Version & Push Image (GHCR)
+name: Build & Version & Push Image (GHCR) + Deploy (K8s)
 
 on:
   push:
     branches: [ deploy/version ]
 
 jobs:
-  build:
+  build_and_deploy:
     runs-on: ubuntu-latest
 
     permissions:
@@ -31,7 +31,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # pyproject.toml 에서 version 추출
+          # pyproject.toml 에서 version 추출 (간단 버전)
           PYPROJECT_VERSION=$(grep '^version' pyproject.toml | cut -d '"' -f2)
 
           # git commit short hash
@@ -55,6 +55,16 @@ jobs:
             -t "${IMAGE_NAME}:latest" \
             --push .
 
+      # 레포에 있는 매니페스트를 EC2로 복사 (EC2에 repo 없어도 됨)
+      - name: Copy manifest to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "infra/k8s/application/04-backend.yaml"
+          target: "/home/ubuntu/k8s-manifest"
+
       - name: Deploy on K8s
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -65,11 +75,29 @@ jobs:
             set -euo pipefail
 
             VERSION_TAG="${{ steps.version.outputs.version_tag }}"
+            IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/gangwon-namho"
+            IMAGE="${IMAGE_NAME}:${VERSION_TAG}"
 
-            cd /home/ubuntu/deploy/upstage-gangwon-fastapi-lecture/infra/k8s/application
+            # scp-action은 target 아래에 source 경로를 그대로 만들기도 해서
+            # 1) /home/ubuntu/k8s-manifest/infra/k8s/application/04-backend.yaml
+            # 2) /home/ubuntu/k8s-manifest/04-backend.yaml
+            # 두 케이스 모두 대응
+            FILE1="/home/ubuntu/k8s-manifest/infra/k8s/application/04-backend.yaml"
+            FILE2="/home/ubuntu/k8s-manifest/04-backend.yaml"
 
-            sed -i "s|^\(\s*image:\s*\)ghcr.io/.*/gangwon-namho:.*|\1ghcr.io/${{ github.repository_owner }}/gangwon-namho:${VERSION_TAG}|g" 04-backend.yaml
-            sed -i "s|value: \".*\"|value: \"${VERSION_TAG}\"|g" 04-backend.yaml
+            if [ -f "$FILE1" ]; then
+              FILE="$FILE1"
+            elif [ -f "$FILE2" ]; then
+              FILE="$FILE2"
+            else
+              echo "ERROR: manifest not found under /home/ubuntu/k8s-manifest"
+              ls -R /home/ubuntu/k8s-manifest || true
+              exit 1
+            fi
 
-            kubectl apply -f 04-backend.yaml
-            git checkout 04-backend.yaml
+            echo "Using manifest: $FILE"
+            sed -i "s|^\(\s*image:\s*\).*|\1${IMAGE}|g" "$FILE"
+
+            kubectl apply -f "$FILE"
+            kubectl rollout status deployment/backend -n gangwon
+            kubectl get pods -n gangwon
